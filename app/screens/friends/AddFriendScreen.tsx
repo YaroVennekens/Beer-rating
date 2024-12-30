@@ -2,9 +2,9 @@ import React, { FunctionComponent, useState, useEffect } from 'react';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { getAuth } from 'firebase/auth';
-import { ref, onValue,  DataSnapshot } from 'firebase/database';
+import { ref, onValue, DataSnapshot } from 'firebase/database';
 import { db } from '@/app/firebase/firebaseConfig';
-import {sendFriendRequest} from '@/app/screens/friends/function/FriendshipFunctions'
+import { sendFriendRequest } from '@/app/screens/friends/function/FriendshipFunctions';
 
 type RootStackParamList = {
     Home: undefined;
@@ -25,6 +25,7 @@ interface AddFriendsScreenProps {
 interface User {
     id: string;
     username: string;
+    avatarColor: string; // Add avatarColor to User interface
 }
 
 const AddFriendsScreen: FunctionComponent<AddFriendsScreenProps> = ({ navigation }) => {
@@ -43,6 +44,7 @@ const AddFriendsScreen: FunctionComponent<AddFriendsScreenProps> = ({ navigation
                         const usersList: User[] = Object.keys(data).map(key => ({
                             id: key,
                             username: data[key].username || 'Onbekend',
+                            avatarColor: data[key].avatarColor || '#4CAF50', // Default color
                         }));
                         setUsers(usersList);
                     }
@@ -57,8 +59,6 @@ const AddFriendsScreen: FunctionComponent<AddFriendsScreenProps> = ({ navigation
         void fetchUsers();
     }, []);
 
-
-
     return (
       <View style={styles.container}>
           <Text style={styles.title}>Vrienden toevoegen</Text>
@@ -70,6 +70,12 @@ const AddFriendsScreen: FunctionComponent<AddFriendsScreenProps> = ({ navigation
               keyExtractor={(item) => item.id}
               renderItem={({ item }) => (
                 <View style={styles.userItem}>
+                    {/* Display Avatar */}
+                    <View style={[styles.avatarContainer, { backgroundColor: item.avatarColor }]}>
+                        <Text style={styles.avatarText}>
+                            {item.username.slice(0, 2).toUpperCase()}
+                        </Text>
+                    </View>
                     <Text style={styles.username}>{item.username}</Text>
                     <TouchableOpacity
                       style={styles.addButton}
@@ -104,6 +110,19 @@ const styles = StyleSheet.create({
         backgroundColor: '#d5d4d4',
         padding: 16,
         borderRadius: 8,
+    },
+    avatarContainer: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 16,
+    },
+    avatarText: {
+        color: 'white',
+        fontSize: 18,
+        fontWeight: 'bold',
     },
     username: {
         fontSize: 18,

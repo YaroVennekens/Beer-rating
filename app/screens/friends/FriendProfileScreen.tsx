@@ -23,6 +23,7 @@ interface FriendProfileScreenProps {
 interface Friend {
     id: string;
     username: string;
+    avatarColor: string; // Add avatarColor to Friend interface
 }
 
 interface Rating {
@@ -101,7 +102,7 @@ const FriendProfileScreen: FunctionComponent<FriendProfileScreenProps> = ({ rout
                       const friendRef = ref(db, `users/${id}`);
                       const friendSnapshot = await get(friendRef);
                       const friendData = friendSnapshot.val();
-                      return { id, username: friendData.username || 'Onbekend' };
+                      return { id, username: friendData.username || 'Onbekend', avatarColor: friendData.avatarColor || '#4CAF50' };
                   })
                 );
 
@@ -143,6 +144,12 @@ const FriendProfileScreen: FunctionComponent<FriendProfileScreenProps> = ({ rout
                 onPress={() => navigation.navigate('FriendProfile', { friendId: friend.id })}
                 style={styles.friendItem}
               >
+                  {/* Smaller Avatar for Mutual Friends */}
+                  <View style={[styles.mutualAvatarContainer, { backgroundColor: friend.avatarColor }]}>
+                      <Text style={styles.avatarText}>
+                          {friend.username.slice(0, 2).toUpperCase()}
+                      </Text>
+                  </View>
                   <Text style={styles.friendName}>{friend.username}</Text>
               </TouchableOpacity>
             ))
@@ -187,9 +194,17 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 20,
     },
+    mutualAvatarContainer: {
+        width: 40,  // Smaller size for mutual friends' avatars
+        height: 40,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
     avatarText: {
         color: 'white',
-        fontSize: 32,
+        fontSize: 16,  // Adjust font size for mutual friends' avatars
         fontWeight: 'bold',
     },
     username: {
@@ -235,6 +250,8 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         marginBottom: 8,
         width: '100%',
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     friendName: {
         fontSize: 16,

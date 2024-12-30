@@ -1,13 +1,14 @@
 import React, { FunctionComponent, useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
 import { getAuth } from 'firebase/auth';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, get } from 'firebase/database';
 import { db } from '@/app/firebase/firebaseConfig';
 import { handleRemoveFriend } from '@/app/screens/friends/function/FriendshipFunctions';
 
 interface Friend {
   id: string;
   username: string;
+  avatarColor: string; // Add avatarColor to Friend interface
 }
 
 const FriendsListScreen: FunctionComponent<{ navigation: any }> = ({ navigation }) => {
@@ -24,6 +25,15 @@ const FriendsListScreen: FunctionComponent<{ navigation: any }> = ({ navigation 
     });
   };
 
+  const fetchAvatarColor = async (userId: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const userRef = ref(db, `users/${userId}/avatarColor`);
+      onValue(userRef, (snapshot) => {
+        resolve(snapshot.val() || '#4CAF50'); // Default color
+      });
+    });
+  };
+
   useEffect(() => {
     const fetchFriends = async () => {
       setLoading(true);
@@ -35,10 +45,11 @@ const FriendsListScreen: FunctionComponent<{ navigation: any }> = ({ navigation 
           const data = snapshot.val();
           if (data) {
             const friendsList: Friend[] = await Promise.all(
-              Object.keys(data).map(async (friendId) => ({
-                id: friendId,
-                username: await fetchUsername(friendId),
-              }))
+              Object.keys(data).map(async (friendId) => {
+                const username = await fetchUsername(friendId);
+                const avatarColor = await fetchAvatarColor(friendId); // Fetch avatar color
+                return { id: friendId, username, avatarColor };
+              })
             );
             setFriends(friendsList);
           } else {
@@ -73,6 +84,12 @@ const FriendsListScreen: FunctionComponent<{ navigation: any }> = ({ navigation 
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <View style={styles.friendItem}>
+              {/* Display Avatar */}
+              <View style={[styles.avatarContainer, { backgroundColor: item.avatarColor }]}>
+                <Text style={styles.avatarText}>
+                  {item.username.slice(0, 2).toUpperCase()}
+                </Text>
+              </View>
               <TouchableOpacity
                 onPress={() => navigation.navigate('FriendProfile', { friendId: item.id })}
                 style={styles.friendDetails}
@@ -117,6 +134,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  avatarContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  avatarText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   friendDetails: {
     flex: 1,
