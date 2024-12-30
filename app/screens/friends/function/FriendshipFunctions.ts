@@ -27,30 +27,48 @@ export const fetchUsername = async (userId: string): Promise<string> => {
   }
 };
 
-/** Verstuur vriendschap verzoek   */
+/** Verstuur vriendschap verzoek   *//** Verstuur vriendschap verzoek */
 export const sendFriendRequest = async (receiverId: string, currentUserId: string) => {
-  try {
-    if (!currentUserId) {
-      Alert.alert('Error', 'Je moet ingelogd zijn voor vriendschap verzoeken te sturen.');
-      return;
+    try {
+      if (!currentUserId) {
+        Alert.alert('Error', 'Je moet ingelogd zijn voor vriendschap verzoeken te sturen.');
+        return;
+      }
+
+      const receiverUsername = await fetchUsername(receiverId);
+
+      // Controleer of er al een vriendschap verzoek naar deze persoon is verstuurd
+      const existingRequestRef = ref(db, `friendRequests`);
+      const snapshot = await get(existingRequestRef);
+      const existingRequests = snapshot.val() || {};
+
+      // Zoek naar een verzoek dat naar de receiverId is gestuurd en de status 'pending' heeft
+      const isRequestSent = Object.keys(existingRequests).some(
+        (key) =>
+          existingRequests[key].receiverId === receiverId &&
+          existingRequests[key].senderId === currentUserId &&
+          existingRequests[key].status === 'pending'
+      );
+
+      if (isRequestSent) {
+        Alert.alert('Error', 'Je hebt al een vriendschap verzoek gestuurd naar deze persoon.');
+        return;
+      }
+
+      // Verstuur nieuw vriendschap verzoek
+      const newFriendRequestRef = push(ref(db, 'friendRequests'));
+      await set(newFriendRequestRef, {
+        senderId: currentUserId,
+        receiverId: receiverId,
+        status: 'pending',
+      });
+
+      Alert.alert('Success', `Vriendschap verzoek verzonden naar ${receiverUsername}.`);
+    } catch (error) {
+      Alert.alert('Error', 'Kon geen vriendschap verzoek sturen.');
+      console.error(error);
     }
-
-    const receiverUsername = await fetchUsername(receiverId);
-
-    const newFriendRequestRef = push(ref(db, 'friendRequests'));
-    await set(newFriendRequestRef, {
-      senderId: currentUserId,
-      receiverId: receiverId,
-      status: 'pending',
-    });
-
-    Alert.alert('Success', `Vriendschap verzoek verzonden naar ${receiverUsername}.`);
-  } catch (error) {
-    Alert.alert('Error', 'Kon geen vriendschap verzoek sturen.');
-    console.error(error);
-  }
-};
-
+  };
 /** Wijger vriendschap vezoek */
 export const handleRejectRequest = async (requestId: string, setFriendRequests: Function) => {
   try {
