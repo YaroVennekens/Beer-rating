@@ -48,7 +48,7 @@ const ProfileScreen: FunctionComponent<ProfileScreenProps> = ({ navigation }) =>
 
             await updateProfile(user, { displayName: username });
 
-            alert('Profile updated successfully!');
+            alert('Wijzigenen zijn opgeslagen');
         } catch (error) {
             console.error('Error updating profile:', error);
         } finally {
