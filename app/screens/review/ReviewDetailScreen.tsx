@@ -1,7 +1,7 @@
 import React, { FunctionComponent } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { RouteProp } from '@react-navigation/native';
-import MapView, { Marker } from 'react-native-maps'; // Import Marker
+import MapView, { Marker } from 'react-native-maps';
 import {formatDate, renderStars} from '@/app/components/RatingComponents'
 import { Rating } from '@/app/interrface/ReviewInterface';
 

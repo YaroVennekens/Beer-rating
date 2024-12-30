@@ -14,7 +14,7 @@ type RootStackParamList = {
   Maps: undefined;
   Login: undefined;
   Friends: undefined;
-  Profile: undefined; // Voeg de profielroute toe
+  Profile: undefined;
 };
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
@@ -23,10 +23,21 @@ interface HomeScreenProps {
   navigation: HomeScreenNavigationProp;
 }
 
+const generateColorFromUsername = (username: string) => {
+  let hash = 0;
+  for (let i = 0; i < username.length; i++) {
+    hash = (hash << 5) - hash + username.charCodeAt(i);
+    hash |= 0; // Convert to 32-bit integer
+  }
+  const color = `hsl(${Math.abs(hash % 360)}, 70%, 50%)`;
+  return color;
+};
+
 const HomeScreen: FunctionComponent<HomeScreenProps> = ({ navigation }) => {
   const [recentRatings, setRecentRatings] = useState<Rating[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);  // Initially, the data is loading
   const [username, setUsername] = useState<string>('');
+  const [avatarColor, setAvatarColor] = useState<string>(''); // Avatar color state
   const user = getAuth().currentUser;
 
   useEffect(() => {
@@ -37,6 +48,7 @@ const HomeScreen: FunctionComponent<HomeScreenProps> = ({ navigation }) => {
 
     const userId = user.uid;
 
+    // Fetch username
     const userRef = ref(db, `users/${userId}/username`);
     onValue(userRef, (snapshot) => {
       const usernameData = snapshot.val();
@@ -45,24 +57,31 @@ const HomeScreen: FunctionComponent<HomeScreenProps> = ({ navigation }) => {
       }
     });
 
+    // Fetch avatar color
+    const avatarColorRef = ref(db, `users/${userId}/avatarColor`);
+    onValue(avatarColorRef, (snapshot) => {
+      const color = snapshot.val();
+      setAvatarColor(color || generateColorFromUsername(username)); // Use the color from DB or generate
+    });
+
+    // Fetch recent ratings
     const ratingsRef = ref(db, `users/${userId}/reviews`);
     const unsubscribe = onValue(ratingsRef, (snapshot) => {
       const data = snapshot.val() || {};
       const ratingsArray = Object.values(data).reverse();
       setRecentRatings(ratingsArray);
+      setLoading(false); // Set loading to false once data is fetched
     });
 
     return () => unsubscribe();
-  }, [navigation, user]);
-
+  }, [navigation, user, username]); // Add `username` dependency to ensure the avatar color updates when the username changes
 
   return (
     <View style={styles.screen}>
-      {/* Header buiten de hoofdcontainer */}
       <View style={styles.header}>
         <Text style={styles.username}>Welkom, {username}!</Text>
         <TouchableOpacity
-          style={styles.profileButton}
+          style={[styles.profileButton, { backgroundColor: avatarColor }]} // Use avatarColor here
           onPress={() => navigation.navigate('Profile')}
         >
           <Text style={styles.profileButtonText}>
@@ -71,20 +90,24 @@ const HomeScreen: FunctionComponent<HomeScreenProps> = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Hoofdcontainer voor de reviews en knoppen */}
       <View style={styles.container}>
-        <FlatList
-          data={recentRatings}
-          renderItem={({ item }) => (
-            <View style={styles.ratingItem}>
-              <Text>{item.beerName.toUpperCase()}</Text>
-              <Text>{item.bar}</Text>
-              <Text>{formatDate(item.timestamp)}</Text>
-              <Text>{renderStars(item.rating)}</Text>
-            </View>
-          )}
-          keyExtractor={(_, index) => `rating-${index}`}
-        />
+        {/* Display a loading spinner while data is being fetched */}
+        {loading ? (
+          <ActivityIndicator size="large" color="#4CAF50" />
+        ) : (
+          <FlatList
+            data={recentRatings}
+            renderItem={({ item }) => (
+              <View style={styles.ratingItem}>
+                <Text style={styles.beerName}>{item.beerName.toUpperCase()}</Text>
+                <Text style={styles.barName}>{item.bar}</Text>
+                <Text style={styles.timestamp}>{formatDate(item.timestamp)}</Text>
+                <Text style={styles.stars}>{renderStars(item.rating)}</Text>
+              </View>
+            )}
+            keyExtractor={(_, index) => `rating-${index}`}
+          />
+        )}
 
         <TouchableOpacity
           style={styles.addButton}
@@ -112,8 +135,6 @@ const HomeScreen: FunctionComponent<HomeScreenProps> = ({ navigation }) => {
           >
             <Text style={styles.overviewButtonText}>Map</Text>
           </TouchableOpacity>
-
-
         </View>
       </View>
     </View>
@@ -135,7 +156,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   profileButton: {
-    backgroundColor: '#4CAF50',
     borderRadius: 20,
     width: 40,
     height: 40,
@@ -157,6 +177,22 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 8,
     borderRadius: 8,
+  },
+  beerName: {
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  barName: {
+    fontSize: 14,
+    color: '#555',
+  },
+  timestamp: {
+    fontSize: 12,
+    color: '#999',
+  },
+  stars: {
+    fontSize: 14,
+    color: '#ffb800',
   },
   addButton: {
     backgroundColor: '#4CAF50',
@@ -183,19 +219,7 @@ const styles = StyleSheet.create({
     width: '48%',
     marginBottom: 8,
   },
-  logoutButton: {
-    backgroundColor: '#f44336',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    width: '48%',
-    marginBottom: 8,
-  },
   overviewButtonText: {
-    color: 'white',
-    fontSize: 16,
-  },
-  logoutButtonText: {
     color: 'white',
     fontSize: 16,
   },

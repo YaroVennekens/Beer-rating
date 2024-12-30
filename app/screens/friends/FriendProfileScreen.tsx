@@ -1,8 +1,15 @@
 import React, { FunctionComponent, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, FlatList } from 'react-native';
+import {
+    View,
+    Text,
+    ScrollView,
+    StyleSheet,
+    TouchableOpacity,
+    ActivityIndicator,
+} from 'react-native';
 import { ref, get } from 'firebase/database';
-import { getAuth } from 'firebase/auth';
 import { db } from '@/app/firebase/firebaseConfig';
+import { getAuth } from 'firebase/auth';
 
 interface FriendProfileScreenProps {
     route: {
@@ -10,6 +17,7 @@ interface FriendProfileScreenProps {
             friendId: string;
         };
     };
+    navigation: any;
 }
 
 interface Friend {
@@ -17,16 +25,24 @@ interface Friend {
     username: string;
 }
 
-const FriendProfileScreen: FunctionComponent<FriendProfileScreenProps> = ({ route }) => {
+interface Rating {
+    key: string;
+    beerName: string;
+    bar: string;
+    rating: number;
+}
+
+const FriendProfileScreen: FunctionComponent<FriendProfileScreenProps> = ({ route, navigation }) => {
     const { friendId } = route.params;
-    const currentUserId = getAuth().currentUser?.uid;
     const [username, setUsername] = useState<string>('');
     const [bio, setBio] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(true);
-    const [commonFriends, setCommonFriends] = useState<Friend[]>([]);
+    const [reviews, setReviews] = useState<Rating[]>([]);
+    const [mutualFriends, setMutualFriends] = useState<Friend[]>([]);
+    const [avatarColor, setAvatarColor] = useState<string>('#4CAF50'); // Default avatar color
 
     useEffect(() => {
-        const fetchFriendProfile = async () => {
+        const fetchFriendData = async () => {
             try {
                 const userRef = ref(db, `users/${friendId}`);
                 const snapshot = await get(userRef);
@@ -34,53 +50,72 @@ const FriendProfileScreen: FunctionComponent<FriendProfileScreenProps> = ({ rout
 
                 if (friendData) {
                     setUsername(friendData.username || 'Onbekend');
-                    setBio(friendData.bio || 'Geen bio beschikbaar.');
+                    setBio(friendData.bio || 'Geen bio beschikbaar');
+                    setAvatarColor(friendData.avatarColor || '#4CAF50'); // Set avatar color if available
                 }
             } catch (error) {
-                console.error('Error fetching friend profile:', error);
+                console.error('Error fetching friend data:', error);
             }
         };
 
-        const fetchCommonFriends = async () => {
-            if (!currentUserId) return;
-
+        const fetchFriendReviews = async () => {
             try {
-                const currentUserFriendsRef = ref(db, `users/${currentUserId}/friends`);
+                const reviewsRef = ref(db, `users/${friendId}/reviews`);
+                const snapshot = await get(reviewsRef);
+                const reviewsData = snapshot.val();
+
+                if (reviewsData) {
+                    const reviewsArray: Rating[] = Object.entries(reviewsData).map(([key, review]) => ({
+                        ...review,
+                        key,
+                    }));
+                    setReviews(reviewsArray.reverse());
+                }
+            } catch (error) {
+                console.error('Error fetching friend reviews:', error);
+            }
+        };
+
+        const fetchMutualFriends = async () => {
+            try {
+                const currentUserId = getAuth().currentUser?.uid;
+                if (!currentUserId) return;
+
+                const userFriendsRef = ref(db, `users/${currentUserId}/friends`);
                 const friendFriendsRef = ref(db, `users/${friendId}/friends`);
 
-                const [currentUserFriendsSnap, friendFriendsSnap] = await Promise.all([
-                    get(currentUserFriendsRef),
+                const [userFriendsSnapshot, friendFriendsSnapshot] = await Promise.all([
+                    get(userFriendsRef),
                     get(friendFriendsRef),
                 ]);
 
-                const currentUserFriends = currentUserFriendsSnap.val() || {};
-                const friendFriends = friendFriendsSnap.val() || {};
+                const userFriends = userFriendsSnapshot.val() || {};
+                const friendFriends = friendFriendsSnapshot.val() || {};
 
-
-                const commonFriendIds = Object.keys(currentUserFriends).filter((id) =>
+                const mutualFriendIds = Object.keys(userFriends).filter((id) =>
                   Object.keys(friendFriends).includes(id)
                 );
 
-                const commonFriendsData = await Promise.all(
-                  commonFriendIds.map(async (id) => {
-                      const commonFriendRef = ref(db, `users/${id}`);
-                      const commonFriendSnap = await get(commonFriendRef);
-                      const commonFriendData = commonFriendSnap.val();
-                      return { id, username: commonFriendData.username || 'Onbekend' };
+                const mutualFriendsData: Friend[] = await Promise.all(
+                  mutualFriendIds.map(async (id) => {
+                      const friendRef = ref(db, `users/${id}`);
+                      const friendSnapshot = await get(friendRef);
+                      const friendData = friendSnapshot.val();
+                      return { id, username: friendData.username || 'Onbekend' };
                   })
                 );
 
-                setCommonFriends(commonFriendsData);
+                setMutualFriends(mutualFriendsData);
             } catch (error) {
-                console.error('Error fetching common friends:', error);
+                console.error('Error fetching mutual friends:', error);
             }
         };
 
         setLoading(true);
-        Promise.all([fetchFriendProfile(), fetchCommonFriends()]).finally(() => {
-            setLoading(false);
-        });
-    }, [friendId, currentUserId]);
+        Promise.all([fetchFriendData(), fetchFriendReviews(), fetchMutualFriends()]).finally(() =>
+          setLoading(false)
+        );
+    }, [friendId]);
 
     if (loading) {
         return (
@@ -93,29 +128,47 @@ const FriendProfileScreen: FunctionComponent<FriendProfileScreenProps> = ({ rout
     return (
       <View style={styles.container}>
           {/* Avatar */}
-          <View style={styles.avatarContainer}>
+          <View style={[styles.avatarContainer, { backgroundColor: avatarColor }]}>
               <Text style={styles.avatarText}>{username.slice(0, 2).toUpperCase()}</Text>
           </View>
-
-          {/* Profile Information */}
-          <Text style={styles.username}>@{username}</Text>
+          <Text style={styles.username}>@{username.replaceAll(' ', '')}</Text>
           <Text style={styles.bio}>{bio}</Text>
 
-          {/* Common Friends Section */}
-          <Text style={styles.sectionTitle}>Gemeenschappelijke vrienden</Text>
-          {commonFriends.length === 0 ? (
-            <Text style={styles.noFriends}>Geen gemeenschappelijke vrienden gevonden.</Text>
+          {/* Mutual Friends Section */}
+          <Text style={styles.sectionTitle}>Gemeenschappelijke Vrienden</Text>
+          {mutualFriends.length > 0 ? (
+            mutualFriends.map((friend) => (
+              <TouchableOpacity
+                key={friend.id}
+                onPress={() => navigation.navigate('FriendProfile', { friendId: friend.id })}
+                style={styles.friendItem}
+              >
+                  <Text style={styles.friendName}>{friend.username}</Text>
+              </TouchableOpacity>
+            ))
           ) : (
-            <FlatList
-              data={commonFriends}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <View style={styles.friendItem}>
-                    <Text style={styles.friendName}>{item.username}</Text>
-                </View>
-              )}
-            />
+            <Text>Geen gemeenschappelijke vrienden.</Text>
           )}
+
+          {/* Reviews Section */}
+          <Text style={styles.sectionTitle}>Reviews</Text>
+          <ScrollView contentContainerStyle={styles.scrollViewContent}>
+              {reviews.length > 0 ? (
+                reviews.map((review) => (
+                  <TouchableOpacity
+                    key={review.key}
+                    onPress={() => navigation.navigate('ReviewDetail', { rating: review })}
+                    style={styles.ratingItem}
+                  >
+                      <Text style={styles.beerName}>{review.beerName.toUpperCase()}</Text>
+                      <Text>{review.bar}</Text>
+                      <Text>{'★'.repeat(review.rating) + '☆'.repeat(5 - review.rating)}</Text>
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <Text>Geen reviews beschikbaar.</Text>
+              )}
+          </ScrollView>
       </View>
     );
 };
@@ -127,7 +180,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     avatarContainer: {
-        backgroundColor: '#4CAF50',
         width: 100,
         height: 100,
         borderRadius: 50,
@@ -158,26 +210,34 @@ const styles = StyleSheet.create({
         marginTop: 20,
         marginBottom: 10,
     },
-    noFriends: {
-        fontSize: 16,
-        color: '#555',
-        textAlign: 'center',
+    scrollViewContent: {
+        paddingBottom: 16,
+        width: '100%',
     },
-    friendItem: {
-        backgroundColor: '#d5d4d4',
-        padding: 12,
+    ratingItem: {
+        backgroundColor: '#cdcdcd',
+        padding: 16,
+        marginBottom: 8,
         borderRadius: 8,
-        marginBottom: 10,
-        alignSelf: 'stretch',
-        alignItems: 'center',
     },
-    friendName: {
-        fontSize: 16,
+    beerName: {
+        fontSize: 18,
+        fontWeight: 'bold',
     },
     center: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    friendItem: {
+        backgroundColor: '#e0e0e0',
+        padding: 12,
+        borderRadius: 8,
+        marginBottom: 8,
+        width: '100%',
+    },
+    friendName: {
+        fontSize: 16,
     },
 });
 

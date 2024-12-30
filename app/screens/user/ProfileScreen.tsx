@@ -1,8 +1,9 @@
 import React, { FunctionComponent, useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
 import { getAuth, updateProfile } from 'firebase/auth';
 import { ref, get, update } from 'firebase/database';
 import { db } from '@/app/firebase/firebaseConfig';
+import ColorPicker from 'react-native-wheel-color-picker';
 
 interface ProfileScreenProps {
     navigation: any;
@@ -12,6 +13,8 @@ const ProfileScreen: FunctionComponent<ProfileScreenProps> = ({ navigation }) =>
     const [username, setUsername] = useState<string>('');
     const [bio, setBio] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
+    const [loadingColor, setLoadingColor] = useState<boolean>(true);
+    const [avatarColor, setAvatarColor] = useState<string>('#4CAF50');
     const user = getAuth().currentUser;
 
     useEffect(() => {
@@ -22,16 +25,24 @@ const ProfileScreen: FunctionComponent<ProfileScreenProps> = ({ navigation }) =>
 
         const userId = user.uid;
 
+
         const userRef = ref(db, `users/${userId}`);
-        get(userRef).then((snapshot) => {
-            const userData = snapshot.val();
-            if (userData) {
-                setUsername(userData.username);
-                setBio(userData.bio || '');
-            }
-        }).catch((error) => {
-            console.error('Error fetching user data:', error);
-        });
+        get(userRef)
+          .then((snapshot) => {
+              const userData = snapshot.val();
+              if (userData) {
+                  setUsername(userData.username);
+                  setBio(userData.bio || '');
+                  const fetchedAvatarColor = userData.avatarColor || '#4CAF50';
+                  setAvatarColor(fetchedAvatarColor);
+              }
+          })
+          .catch((error) => {
+              console.error('Error fetching user data:', error);
+          })
+          .finally(() => {
+              setLoadingColor(false);
+          });
     }, [navigation, user]);
 
     const handleProfileUpdate = async () => {
@@ -43,12 +54,16 @@ const ProfileScreen: FunctionComponent<ProfileScreenProps> = ({ navigation }) =>
             const userId = user.uid;
 
 
-            await update(ref(db, `users/${userId}`), { username, bio });
+            await update(ref(db, `users/${userId}`), {
+                username,
+                bio,
+                avatarColor,
+            });
 
 
             await updateProfile(user, { displayName: username });
 
-            alert('Wijzigenen zijn opgeslagen');
+            alert('Wijzigingen zijn opgeslagen');
         } catch (error) {
             console.error('Error updating profile:', error);
         } finally {
@@ -56,12 +71,19 @@ const ProfileScreen: FunctionComponent<ProfileScreenProps> = ({ navigation }) =>
         }
     };
 
+    const handleColorSelect = (color: string) => {
+        setAvatarColor(color);
+    };
+
     return (
-      <View style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.screen}>
           {/* Profile Avatar */}
-          <View style={styles.avatarContainer}>
+          <TouchableOpacity
+            style={[styles.avatarContainer, { backgroundColor: avatarColor }]}
+            onPress={() => {}}
+          >
               <Text style={styles.avatarText}>{username.slice(0, 2).toUpperCase()}</Text>
-          </View>
+          </TouchableOpacity>
 
           <Text style={styles.title}>@{username.replaceAll(' ', '')}</Text>
 
@@ -82,10 +104,24 @@ const ProfileScreen: FunctionComponent<ProfileScreenProps> = ({ navigation }) =>
                 placeholder="Vertel iets over jezelf"
                 multiline
               />
+              <Text style={styles.label}>Kies een avatar kleur</Text>
+
+              {/* Show loading animation while color is being fetched */}
+              {loadingColor ? (
+                <ActivityIndicator size="large" color="#4CAF50" />
+              ) : (
+                <View style={styles.colorPickerContainer}>
+                    <ColorPicker
+                      color={avatarColor}
+                      onColorChange={handleColorSelect}
+                      style={{ width: 300, height: 300 }}
+                    />
+                </View>
+              )}
 
               <TouchableOpacity
                 style={styles.button}
-                onPress={() => navigation.navigate('Friends')}
+                onPress={() => navigation.navigate('FriendsList')}
               >
                   <Text style={styles.buttonText}>Vrienden</Text>
               </TouchableOpacity>
@@ -96,6 +132,7 @@ const ProfileScreen: FunctionComponent<ProfileScreenProps> = ({ navigation }) =>
                   <Text style={styles.buttonText}>Reviews</Text>
               </TouchableOpacity>
 
+              {/* Save Profile Button */}
               <TouchableOpacity
                 style={styles.button}
                 onPress={handleProfileUpdate}
@@ -119,18 +156,17 @@ const ProfileScreen: FunctionComponent<ProfileScreenProps> = ({ navigation }) =>
           >
               <Text style={styles.logoutButtonText}>Uitloggen</Text>
           </TouchableOpacity>
-      </View>
+      </ScrollView>
     );
 };
 
 const styles = StyleSheet.create({
     screen: {
-        flex: 1,
+        flexGrow: 1,
         padding: 16,
-        justifyContent: 'space-between',
+        justifyContent: 'flex-start',
     },
     avatarContainer: {
-        backgroundColor: '#4CAF50',
         width: 100,
         height: 100,
         borderRadius: 50,
@@ -176,7 +212,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         width: '100%',
         marginBottom: 10,
-        color: 'white'
     },
     buttonText: {
         color: 'white',
@@ -188,13 +223,16 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         alignItems: 'center',
         width: '100%',
-        marginTop: 'auto',
+        marginTop: 20,
     },
     logoutButtonText: {
         color: 'white',
         fontSize: 16,
     },
-
+    colorPickerContainer: {
+        alignItems: 'center',
+        marginBottom: 20,
+    },
 });
 
 export default ProfileScreen;

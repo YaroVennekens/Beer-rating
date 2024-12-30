@@ -14,8 +14,7 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "be.yennekens.beerrating"
+      "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
@@ -34,6 +33,15 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "ffc77344-4e0f-4d1b-affe-644102f84353"
+      }
+    },
+    "owner": "yarovennekens"
   }
 }
