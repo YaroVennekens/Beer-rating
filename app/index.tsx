@@ -1,10 +1,10 @@
 import { createStackNavigator } from '@react-navigation/stack';
 import HomeScreen from '@/app/screens/HomeScreen';
-import CreateRatingScreen from '@/app/screens/CreateRatingScreen';
+import CreateRatingScreen from '@/app/screens/review/CreateRatingScreen';
 import OverviewScreen from '@/app/screens/OverviewScreen';
 import MapScreen from '@/app/screens/MapScreen';
-import ReviewsScreen from '@/app/screens/ReviewsScreen';
-import ReviewDetailScreen from '@/app/screens/ReviewDetailScreen';
+import ReviewsScreen from '@/app/screens/review/ReviewsScreen';
+import ReviewDetailScreen from '@/app/screens/review/ReviewDetailScreen';
 import LoginScreen from '@/app/screens/user/LoginScreen';
 import RegisterScreen from '@/app/screens/user/RegisterScreen';
 import AcceptFriendRequestScreen from '@/app/screens/friends/AcceptFriendRequest'
@@ -12,12 +12,19 @@ import FriendsScreen from '@/app/screens/friends/FriendsScreen'
 import AddFriendScreen from '@/app/screens/friends/AddFriendScreen'
 import FriendListScreen from '@/app/screens/friends/FriendListScreen'
 import FriendReviewsScreen from '@/app/screens/friends/FriendReviewsScreen'
+import ProfileScreen from '@/app/screens/user/ProfileScreen'
+import FriendProfileScreen from '@/app/screens/friends/FriendProfileScreen'
 
 const Stack = createStackNavigator();
 
 export default function Index() {
       return (
-        <Stack.Navigator initialRouteName="Login">
+        <Stack.Navigator
+          initialRouteName="Login"
+          screenOptions={{
+            headerShown: true,
+          }}
+        >
               <Stack.Screen
                 name="Home"
                 component={HomeScreen}
@@ -33,7 +40,9 @@ export default function Index() {
                 component={OverviewScreen}
                 options={{ title: 'Alle reviews' }}
               />
-              <Stack.Screen
+          <Stack.Screen name="FriendProfile" component={FriendProfileScreen} />
+
+          <Stack.Screen
                 name="Maps"
                 component={MapScreen}
                 options={{ title: 'Map' }}
@@ -64,6 +73,10 @@ export default function Index() {
                   name="AcceptFriendRequest"
                   options={{ title: 'Vrienden accepteren' }}
                   component={AcceptFriendRequestScreen} />
+          <Stack.Screen
+            name="Profile"
+            options={{ title: 'Profiel' }}
+            component={ProfileScreen} />
                 <Stack.Screen
                   name="FriendReviews"
                   options={{ title: 'Online' }}

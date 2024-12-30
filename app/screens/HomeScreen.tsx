@@ -1,4 +1,3 @@
-
 import React, { FunctionComponent, useState, useEffect } from 'react';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
@@ -6,7 +5,7 @@ import { getAuth, signOut } from 'firebase/auth';
 import { ref, onValue } from 'firebase/database';
 import { db } from '../firebase/firebaseConfig';
 import { Rating } from '@/app/interrface/ReviewInterface';
-import {formatDate, renderStars} from '@/app/components/RatingComponents'
+import { formatDate, renderStars } from '@/app/components/RatingComponents';
 
 type RootStackParamList = {
   Home: undefined;
@@ -15,6 +14,7 @@ type RootStackParamList = {
   Maps: undefined;
   Login: undefined;
   Friends: undefined;
+  Profile: undefined; // Voeg de profielroute toe
 };
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
@@ -36,9 +36,6 @@ const HomeScreen: FunctionComponent<HomeScreenProps> = ({ navigation }) => {
     }
 
     const userId = user.uid;
-    navigation.setOptions({
-      headerLeft: () => null,
-    });
 
     const userRef = ref(db, `users/${userId}/username`);
     onValue(userRef, (snapshot) => {
@@ -56,81 +53,122 @@ const HomeScreen: FunctionComponent<HomeScreenProps> = ({ navigation }) => {
     });
 
     return () => unsubscribe();
-  }, [navigation]);
+  }, [navigation, user]);
 
-  const handleLogout = async () => {
-    setLoading(true);
-    try {
-      await signOut(getAuth());
-      navigation.navigate('Login');
-    } catch (error) {
-      console.error('Error logging out', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.username}>Welkom, {username}!</Text>
-      <FlatList
-        data={recentRatings}
-        renderItem={({ item }) => (
-          <View style={styles.ratingItem}>
-            <Text>{item.beerName.toUpperCase()}</Text>
-            <Text>{item.bar}</Text>
-            <Text>{formatDate(item.timestamp)}</Text>
-            <Text>{renderStars(item.rating)}</Text>
-          </View>
-        )}
-        keyExtractor={(_, index) => `rating-${index}`}
-      />
-
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => navigation.navigate('CreateRating')}
-      >
-        <Text style={styles.addButtonText}>Review aanmaken</Text>
-      </TouchableOpacity>
-
-      <View style={styles.buttonContainer}>
+    <View style={styles.screen}>
+      {/* Header buiten de hoofdcontainer */}
+      <View style={styles.header}>
+        <Text style={styles.username}>Welkom, {username}!</Text>
         <TouchableOpacity
-          style={styles.overviewButton}
-          onPress={() => navigation.navigate('Friends')}
+          style={styles.profileButton}
+          onPress={() => navigation.navigate('Profile')}
         >
-          <Text style={styles.overviewButtonText}>Vrienden</Text>
+          <Text style={styles.profileButtonText}>
+            {username.slice(0, 2).toUpperCase()}
+          </Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.overviewButton}
-          onPress={() => navigation.navigate('Overview')}
-        >
-          <Text style={styles.overviewButtonText}>Overzicht</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.overviewButton}
-          onPress={() => navigation.navigate('Maps')}
-        >
+      </View>
 
-          <Text style={styles.overviewButtonText}>Map</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={handleLogout}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text style={styles.logoutButtonText}>Uitloggen</Text>
+      {/* Hoofdcontainer voor de reviews en knoppen */}
+      <View style={styles.container}>
+        <FlatList
+          data={recentRatings}
+          renderItem={({ item }) => (
+            <View style={styles.ratingItem}>
+              <Text>{item.beerName.toUpperCase()}</Text>
+              <Text>{item.bar}</Text>
+              <Text>{formatDate(item.timestamp)}</Text>
+              <Text>{renderStars(item.rating)}</Text>
+            </View>
           )}
+          keyExtractor={(_, index) => `rating-${index}`}
+        />
+
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => navigation.navigate('CreateRating')}
+        >
+          <Text style={styles.addButtonText}>Review aanmaken</Text>
         </TouchableOpacity>
+
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={styles.overviewButton}
+            onPress={() => navigation.navigate('Friends')}
+          >
+            <Text style={styles.overviewButtonText}>Vrienden</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.overviewButton}
+            onPress={() => navigation.navigate('Overview')}
+          >
+            <Text style={styles.overviewButtonText}>Overzicht</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.overviewButton}
+            onPress={() => navigation.navigate('Maps')}
+          >
+            <Text style={styles.overviewButtonText}>Map</Text>
+          </TouchableOpacity>
+
+
+        </View>
       </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 10,
+  },
+  username: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  profileButton: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  container: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  ratingItem: {
+    backgroundColor: '#d5d4d4',
+    padding: 16,
+    marginBottom: 8,
+    borderRadius: 8,
+  },
+  addButton: {
+    backgroundColor: '#4CAF50',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  addButtonText: {
+    color: 'white',
+    fontSize: 18,
+  },
   buttonContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -161,35 +199,6 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
   },
-  container: {
-    flex: 1,
-    padding: 16,
-  },
-  username: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
-  ratingItem: {
-    backgroundColor: '#d5d4d4',
-    padding: 16,
-    marginBottom: 8,
-    borderRadius: 8,
-    flex: 1,
-    marginHorizontal: 4,
-  },
-  addButton: {
-    backgroundColor: '#4CAF50',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  addButtonText: {
-    color: 'white',
-    fontSize: 18,
-  },
-
 });
 
 export default HomeScreen;

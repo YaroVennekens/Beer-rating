@@ -1,16 +1,16 @@
 import React, { FunctionComponent, useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert, Button } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
 import { getAuth } from 'firebase/auth';
 import { ref, onValue } from 'firebase/database';
 import { db } from '@/app/firebase/firebaseConfig';
-import {handleRemoveFriend} from '@/app/screens/friends/function/FriendshipFunctions'
+import { handleRemoveFriend } from '@/app/screens/friends/function/FriendshipFunctions';
 
 interface Friend {
   id: string;
   username: string;
 }
 
-const FriendsListScreen: FunctionComponent = () => {
+const FriendsListScreen: FunctionComponent<{ navigation: any }> = ({ navigation }) => {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const currentUserId = getAuth().currentUser?.uid;
@@ -24,8 +24,6 @@ const FriendsListScreen: FunctionComponent = () => {
     });
   };
 
-
-
   useEffect(() => {
     const fetchFriends = async () => {
       setLoading(true);
@@ -33,7 +31,7 @@ const FriendsListScreen: FunctionComponent = () => {
         if (!currentUserId) return;
 
         const friendsRef = ref(db, `users/${currentUserId}/friends`);
-        onValue(friendsRef, async (snapshot) => {
+        const listener = onValue(friendsRef, async (snapshot) => {
           const data = snapshot.val();
           if (data) {
             const friendsList: Friend[] = await Promise.all(
@@ -46,10 +44,15 @@ const FriendsListScreen: FunctionComponent = () => {
           } else {
             setFriends([]);
           }
+          setLoading(false);
         });
+
+        return () => {
+          // Cleanup listener on unmount
+          listener();
+        };
       } catch (error) {
         Alert.alert('Error', 'Kon vriendenlijst niet openen.');
-      } finally {
         setLoading(false);
       }
     };
@@ -70,12 +73,18 @@ const FriendsListScreen: FunctionComponent = () => {
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <View style={styles.friendItem}>
-              <Text style={styles.friendName}>{item.username}</Text>
-              <Button
-                title="Verwijder"
-                color="#FF5722"
+              <TouchableOpacity
+                onPress={() => navigation.navigate('FriendProfile', { friendId: item.id })}
+                style={styles.friendDetails}
+              >
+                <Text style={styles.friendName}>{item.username}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.removeButton}
                 onPress={() => handleRemoveFriend(item.id, currentUserId, setFriends)}
-              />
+              >
+                <Text style={styles.removeButtonText}>Verwijder</Text>
+              </TouchableOpacity>
             </View>
           )}
         />
@@ -109,8 +118,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  friendDetails: {
+    flex: 1,
+  },
   friendName: {
     fontSize: 18,
+  },
+  removeButton: {
+    backgroundColor: '#FF5722',
+    padding: 8,
+    borderRadius: 8,
+  },
+  removeButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
   },
 });
 
