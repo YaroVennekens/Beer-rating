@@ -1,0 +1,4 @@
+pnpm install @react-navigation/native
+pnpm install react-native-screens react-native-safe-area-context
+pnpm install @react-navigation/stack
+pnpm install firebase
