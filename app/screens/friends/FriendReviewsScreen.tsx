@@ -14,7 +14,7 @@ interface Review {
     drinks: string;
     beerName: string;
     timestamp: number;
-    avatarColor: string; // Add avatarColor to Review interface
+    avatarColor: string;
 }
 
 const FriendReviewsScreen: FunctionComponent = () => {

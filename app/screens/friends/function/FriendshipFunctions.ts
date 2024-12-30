@@ -1,6 +1,7 @@
 import { Alert } from 'react-native';
-import { onValue, push, ref, remove, set, update } from 'firebase/database';
+import {get, onValue, push, ref, remove, set, update} from 'firebase/database'
 import { db } from '@/app/firebase/firebaseConfig';
+
 
 /** Fetch username for a given userId */
 export const fetchUsername = async (userId: string): Promise<string> => {

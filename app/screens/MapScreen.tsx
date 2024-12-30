@@ -51,6 +51,7 @@ const MapScreen: FunctionComponent<MapScreenProps> = ({ navigation }) => {
     const [isLoadingRatings, setIsLoadingRatings] = useState<boolean>(true);
     const [friendUsernames, setFriendUsernames] = useState<{ [key: string]: string }>({});
     const currentUserId = getAuth().currentUser?.uid;
+
     useEffect(() => {
         const user = getAuth().currentUser;
         if (user) {
@@ -80,7 +81,6 @@ const MapScreen: FunctionComponent<MapScreenProps> = ({ navigation }) => {
 
     const fetchRatings = async (userId: string) => {
         try {
-
             const friendsRef = ref(db, `users/${userId}/friends`);
             const friendsSnapshot = await get(friendsRef);
             let friendsRatings: Rating[] = [];
@@ -89,7 +89,6 @@ const MapScreen: FunctionComponent<MapScreenProps> = ({ navigation }) => {
             if (friendsSnapshot.exists()) {
                 const friendsData = friendsSnapshot.val();
                 for (const friendId in friendsData) {
-
                     const username = await fetchUsername(friendId);
                     tempFriendUsernames[friendId] = username;
 
@@ -120,7 +119,6 @@ const MapScreen: FunctionComponent<MapScreenProps> = ({ navigation }) => {
                     friendId: 'Ik',
                 }));
             }
-
 
             const allRatings = [...friendsRatings, ...userRatings];
             setRatings(allRatings.reverse());
@@ -158,14 +156,6 @@ const MapScreen: FunctionComponent<MapScreenProps> = ({ navigation }) => {
         }
     };
 
-    if (isLoadingLocation || isLoadingRatings) {
-        return (
-          <View style={styles.container}>
-              <ActivityIndicator size="large" color="#0000ff" />
-          </View>
-        );
-    }
-
     const renderStars = (rating: number) => {
         const fullStars = '★'.repeat(rating);
         const emptyStars = '☆'.repeat(5 - rating);
@@ -175,41 +165,51 @@ const MapScreen: FunctionComponent<MapScreenProps> = ({ navigation }) => {
     return (
       <View style={styles.container}>
           {location && (
-            <MapView
-              style={styles.map}
-              initialRegion={{
-                  latitude: location.latitude,
-                  longitude: location.longitude,
-                  latitudeDelta: 0.05,
-                  longitudeDelta: 0.05,
-              }}
-              showsUserLocation={false}
-            >
-                {/* User location marker */}
-                <Marker coordinate={location}>
-                    <View style={styles.userLocationMarker} />
-                </Marker>
+            <View style={styles.mapContainer}>
+                <MapView
+                  style={styles.map}
+                  initialRegion={{
+                      latitude: location.latitude,
+                      longitude: location.longitude,
+                      latitudeDelta: 0.05,
+                      longitudeDelta: 0.05,
+                  }}
+                  showsUserLocation={false}
+                >
+                    {/* User location marker */}
+                    <Marker coordinate={location}>
+                        <View style={styles.userLocationMarker} />
+                    </Marker>
 
-                {/* Review markers */}
-                {Object.entries(groupedRatings).map(([key, reviews]) => {
-                    const [lat, lng] = key.split(',').map(Number);
-                    const isFriend = reviews[0].friendId !== "Ik";
-                    const title = isFriend
-                      ? `${friendUsernames[reviews[0].friendId]} review`
-                      : `${reviews[0].beerName} ${renderStars(reviews[0].rating)}`;
+                    {/* Conditionally render review markers */}
+                    {!isLoadingRatings &&
+                      Object.entries(groupedRatings).map(([key, reviews]) => {
+                          const [lat, lng] = key.split(',').map(Number);
+                          const isFriend = reviews[0].friendId !== "Ik";
+                          const title = isFriend
+                            ? `${friendUsernames[reviews[0].friendId]} review`
+                            : `${reviews[0].beerName} ${renderStars(reviews[0].rating)}`;
 
-                    return (
-                      <Marker
-                        key={key}
-                        coordinate={{ latitude: lat, longitude: lng }}
-                        title={title}
-                        description={reviews.length > 1 ? `${reviews.length} reviews` : `${reviews[0].bar}`}
-                        onPress={() => handleMarkerPress(lat, lng)}
-                        pinColor={isFriend ? 'blue' : 'red'}
-                      />
-                    );
-                })}
-            </MapView>
+                          return (
+                            <Marker
+                              key={key}
+                              coordinate={{ latitude: lat, longitude: lng }}
+                              title={title}
+                              description={reviews.length > 1 ? `${reviews.length} reviews` : `${reviews[0].bar}`}
+                              onPress={() => handleMarkerPress(lat, lng)}
+                              pinColor={isFriend ? 'blue' : 'red'}
+                            />
+                          );
+                      })}
+                </MapView>
+
+                {/* Loading spinner over the map */}
+                {isLoadingRatings && (
+                  <View style={styles.loadingOverlay}>
+                      <ActivityIndicator size="large" color="#0000ff" />
+                  </View>
+                )}
+            </View>
           )}
       </View>
     );
@@ -217,6 +217,9 @@ const MapScreen: FunctionComponent<MapScreenProps> = ({ navigation }) => {
 
 const styles = StyleSheet.create({
     container: {
+        flex: 1,
+    },
+    mapContainer: {
         flex: 1,
     },
     map: {
@@ -231,6 +234,12 @@ const styles = StyleSheet.create({
         borderWidth: 4,
         borderColor: '#b30000',
         borderStyle: 'solid',
+    },
+    loadingOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(255, 255, 255, 0.7)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });
 

@@ -164,7 +164,7 @@ const FriendProfileScreen: FunctionComponent<FriendProfileScreenProps> = ({ rout
                 reviews.map((review) => (
                   <TouchableOpacity
                     key={review.key}
-                    onPress={() => navigation.navigate('ReviewDetail', { rating: review })}
+                    onPress={() => navigation.navigate('ReviewDetail', { rating: review, friendId: friendId, avatarColor: avatarColor})}
                     style={styles.ratingItem}
                   >
                       <Text style={styles.beerName}>{review.beerName.toUpperCase()}</Text>

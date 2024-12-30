@@ -31,21 +31,33 @@ interface User {
 const AddFriendsScreen: FunctionComponent<AddFriendsScreenProps> = ({ navigation }) => {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
+    const [friends, setFriends] = useState<string[]>([]);  // Store the list of friend IDs
     const currentUserId = getAuth().currentUser?.uid;
 
     useEffect(() => {
         const fetchUsers = async () => {
             setLoading(true);
             try {
+                // Fetching current user friends
+                const friendsRef = ref(db, `users/${currentUserId}/friends`);
+                onValue(friendsRef, (snapshot: DataSnapshot) => {
+                    const friendsData = snapshot.val() || {};
+                    const friendIds = Object.keys(friendsData); // Get all friend IDs
+                    setFriends(friendIds);  // Store the friend IDs
+                });
+
+                // Fetching all users
                 const usersRef = ref(db, 'users');
                 onValue(usersRef, (snapshot: DataSnapshot) => {
                     const data = snapshot.val();
                     if (data) {
-                        const usersList: User[] = Object.keys(data).map(key => ({
-                            id: key,
-                            username: data[key].username || 'Onbekend',
-                            avatarColor: data[key].avatarColor || '#4CAF50', // Default color
-                        }));
+                        const usersList: User[] = Object.keys(data)
+                          .map(key => ({
+                              id: key,
+                              username: data[key].username || 'Onbekend',
+                              avatarColor: data[key].avatarColor || '#4CAF50', // Default color
+                          }))
+                          .filter(user => user.id !== currentUserId && !friends.includes(user.id)); // Exclude current user and friends
                         setUsers(usersList);
                     }
                 });
@@ -57,7 +69,7 @@ const AddFriendsScreen: FunctionComponent<AddFriendsScreenProps> = ({ navigation
         };
 
         void fetchUsers();
-    }, []);
+    }, [currentUserId, friends]);
 
     return (
       <View style={styles.container}>
@@ -81,7 +93,7 @@ const AddFriendsScreen: FunctionComponent<AddFriendsScreenProps> = ({ navigation
                       style={styles.addButton}
                       onPress={() => sendFriendRequest(item.id, currentUserId)}
                     >
-                        <Text style={styles.addButtonText}>+</Text>
+                        <Text style={styles.addButtonText}>Toevoegen</Text>
                     </TouchableOpacity>
                 </View>
               )}
