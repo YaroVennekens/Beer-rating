@@ -7,7 +7,7 @@ import {
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import GetLocation from 'react-native-get-location';
-import { ref, query, orderByChild, get, onValue } from 'firebase/database';
+import { ref, query, orderByChild, get, onValue, DataSnapshot } from 'firebase/database';
 import { db } from '@/app/firebase/firebaseConfig';
 import { getAuth } from 'firebase/auth';
 
@@ -38,7 +38,7 @@ interface MapScreenProps {
 const fetchUsername = async (userId: string): Promise<string> => {
     return new Promise((resolve) => {
         const userRef = ref(db, `users/${userId}/username`);
-        onValue(userRef, (snapshot) => {
+        onValue(userRef, (snapshot: DataSnapshot) => {
             resolve(snapshot.val() || 'Unknown');
         });
     });
@@ -79,7 +79,7 @@ const MapScreen: FunctionComponent<MapScreenProps> = ({ navigation }) => {
         }
     }, []);
 
-    const fetchRatings = async (userId: string) => {
+    const fetchRatings = async (userId: string): Promise<void> => {
         try {
             const friendsRef = ref(db, `users/${userId}/friends`);
             const friendsSnapshot = await get(friendsRef);
@@ -141,7 +141,7 @@ const MapScreen: FunctionComponent<MapScreenProps> = ({ navigation }) => {
         groupedRatings[key].push(rating);
     });
 
-    const handleMarkerPress = (lat: number, lng: number) => {
+    const handleMarkerPress = (lat: number, lng: number): void => {
         const key = `${lat},${lng}`;
         const reviews = groupedRatings[key];
 
@@ -156,7 +156,7 @@ const MapScreen: FunctionComponent<MapScreenProps> = ({ navigation }) => {
         }
     };
 
-    const renderStars = (rating: number) => {
+    const renderStars = (rating: number): string => {
         const fullStars = '★'.repeat(rating);
         const emptyStars = '☆'.repeat(5 - rating);
         return fullStars + emptyStars;

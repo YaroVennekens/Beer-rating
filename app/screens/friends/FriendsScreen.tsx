@@ -1,12 +1,9 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../..';
 
-type RootStackParamList = {
-    Home: undefined;
-    Friends: undefined;
-    // other screens...
-};
+
 
 type FriendsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Friends'>;
 

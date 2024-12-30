@@ -2,30 +2,31 @@ import { Alert } from 'react-native';
 import { get, onValue, push, ref, remove, set, update } from 'firebase/database';
 import { db } from '@/app/firebase/firebaseConfig';
 
-/** Fetch username for a given userId */
+/** Fetch username for a given userId *//** Fetch username for a given userId */
 export const fetchUsername = async (userId: string): Promise<string> => {
-  try {
-    const userRef = ref(db, `users/${userId}/username`);
-    return new Promise((resolve, reject) => {
-      onValue(
-        userRef,
-        (snapshot) => {
-          const username = snapshot.val();
-          resolve(username || 'Unknown');
-        },
-        (error) => {
-          console.error('Error fetching username:', error);
-          reject('Unknown');
-        },
-        { onlyOnce: true }
-      );
-    });
-  } catch (error) {
-    console.error('Error in fetchUsername:', error);
-    return 'Unknown';
-  }
-};
+    try {
+      const userRef = ref(db, `users/${userId}/username`);
+      return new Promise<string>((resolve, reject) => {
+        onValue(
+          userRef,
+          (snapshot) => {
+            const username = snapshot.val() as string | null;
+            resolve(username || 'Unknown');
+          },
+          (error) => {
+            console.error('Error fetching username:', error);
+            reject('Onbekend');
+          },
+          { onlyOnce: true }
+        );
+      });
+    } catch (error) {
+      console.error('Error in fetchUsername:', error);
+      return 'Onbekend';
+    }
+  };
 
+/** Verstuur vriendschap verzoek */
 /** Verstuur vriendschap verzoek */
 export const sendFriendRequest = async (receiverId: string, currentUserId: string) => {
   try {
@@ -39,7 +40,7 @@ export const sendFriendRequest = async (receiverId: string, currentUserId: strin
     // Controleer of er al een vriendschap verzoek naar deze persoon is verstuurd
     const existingRequestRef = ref(db, `friendRequests`);
     const snapshot = await get(existingRequestRef);
-    const existingRequests = snapshot.val() || {};
+    const existingRequests = snapshot.val() as Record<string, { receiverId: string; senderId: string; status: string }>;
 
     // Zoek naar een verzoek dat naar de receiverId is gestuurd en de status 'pending' heeft
     const isRequestSent = Object.values(existingRequests).some(
@@ -70,7 +71,10 @@ export const sendFriendRequest = async (receiverId: string, currentUserId: strin
 };
 
 /** Wijger vriendschap verzoek */
-export const handleRejectRequest = async (requestId: string, setFriendRequests: Function) => {
+export const handleRejectRequest = async (
+  requestId: string,
+  setFriendRequests: React.Dispatch<React.SetStateAction<FriendRequest[]>>
+): Promise<void> => {
   try {
     await remove(ref(db, `friendRequests/${requestId}`));
     setFriendRequests((prevRequests) =>
@@ -84,7 +88,11 @@ export const handleRejectRequest = async (requestId: string, setFriendRequests: 
 };
 
 /** Accepteer vriendschap verzoek */
-export const handleAcceptRequest = async (requestId: string, senderId: string, currentUserId: string) => {
+export const handleAcceptRequest = async (
+  requestId: string,
+  senderId: string,
+  currentUserId: string
+): Promise<void> => {
   try {
     if (!currentUserId) {
       Alert.alert('Error', 'Je bent niet ingelogd.');
@@ -111,7 +119,11 @@ export const handleAcceptRequest = async (requestId: string, senderId: string, c
 };
 
 /** Vriend verwijderen */
-export const handleRemoveFriend = async (friendId: string, currentUserId: string , setFriends: Function) => {
+export const handleRemoveFriend = async (
+  friendId: string,
+  currentUserId: string,
+  setFriends: React.Dispatch<React.SetStateAction<Friend[]>>
+): Promise<void> => {
   try {
     if (!currentUserId) return;
 
@@ -131,3 +143,16 @@ export const handleRemoveFriend = async (friendId: string, currentUserId: string
     console.error(error);
   }
 };
+
+
+interface FriendRequest {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  status: string;
+}
+
+interface Friend {
+  id: string;
+  username: string;
+}

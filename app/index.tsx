@@ -14,9 +14,19 @@ import FriendListScreen from '@/app/screens/friends/FriendListScreen'
 import FriendReviewsScreen from '@/app/screens/friends/FriendReviewsScreen'
 import ProfileScreen from '@/app/screens/user/ProfileScreen'
 import FriendProfileScreen from '@/app/screens/friends/FriendProfileScreen'
+import {Rating} from '@/app/interrface/ReviewInterface'
 
 const Stack = createStackNavigator();
+export type RootStackParamList = {
+  Home: undefined;
+  Friends: undefined;
+  FriendReviews: undefined;
+  FriendsList: undefined;
+  AddFriend: undefined;
+  AcceptFriendRequest: undefined;
+  ReviewDetail: { rating: Rating; friendId: string; avatarColor: string };
 
+};
 export default function Index() {
       return (
         <Stack.Navigator

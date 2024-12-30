@@ -1,18 +1,14 @@
 import React, { FunctionComponent, useState, useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Button, FlatList, Alert, ScrollView, ActivityIndicator } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { RouteProp } from '@react-navigation/native';
 import { formatDate, renderStars } from '@/app/components/RatingComponents';
-import { Rating } from '@/app/interface/ReviewInterface';
 import { fetchUsername } from '@/app/screens/friends/function/FriendshipFunctions';
-
-type RootStackParamList = {
-  Home: undefined;
-  CreateRating: undefined;
-  Overview: undefined;
-  Maps: undefined;
-  ReviewDetail: { rating: Rating; friendId: string; avatarColor: string };
-};
+import { Rating } from '@/app/interrface/ReviewInterface';
+import { RootStackParamList } from '@/app';
+import { getDatabase, ref, set, push, get } from 'firebase/database';
+import { db } from '@/app/firebase/firebaseConfig';
+import { getAuth } from 'firebase/auth';
 
 type ReviewDetailScreenRouteProp = RouteProp<RootStackParamList, 'ReviewDetail'>;
 
@@ -24,6 +20,11 @@ const ReviewDetailScreen: FunctionComponent<ReviewDetailScreenProps> = ({ route 
   const { rating, friendId, avatarColor } = route.params;
 
   const [username, setUsername] = useState<string>('Laden...');
+  const [comment, setComment] = useState<string>('');
+  const [comments, setComments] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(false); // Loading state
+  const [userAvatars, setUserAvatars] = useState<{ [key: string]: string }>({}); // Store user avatars by ID
+  const currentUserId = getAuth().currentUser?.uid;
 
   // Fetch the username asynchronously
   useEffect(() => {
@@ -37,12 +38,80 @@ const ReviewDetailScreen: FunctionComponent<ReviewDetailScreenProps> = ({ route 
       }
     };
 
-    loadUsername();
+    void loadUsername();
   }, [friendId]);
 
+  // Fetch existing comments and their avatars from Firebase
+  useEffect(() => {
+    const fetchComments = async () => {
+      try {
+        const commentsRef = ref(db, `reviews/${rating.id}/comments`);
+        const snapshot = await get(commentsRef);
+        const commentsData = snapshot.val() || {};
+
+        // Fetch avatar for each user in the comments
+        const avatarPromises = Object.keys(commentsData).map(async (key) => {
+          const comment = commentsData[key];
+          const userAvatarColor = await fetchAvatarColor(comment.userId);
+          return { userId: comment.userId, avatarColor: userAvatarColor };
+        });
+
+        const avatars = await Promise.all(avatarPromises);
+        const userAvatarMap = avatars.reduce((acc, { userId, avatarColor }) => {
+          acc[userId] = avatarColor;
+          return acc;
+        }, {});
+
+        setUserAvatars(userAvatarMap);
+
+        setComments(Object.values(commentsData));
+      } catch (error) {
+        console.error('Error fetching comments:', error);
+      }
+    };
+
+    fetchComments();
+  }, [rating.id]);
+
+  // Fetch the avatar color for the user
+  const fetchAvatarColor = async (userId: string): Promise<string> => {
+    try {
+      const userRef = ref(db, `users/${userId}/avatarColor`);
+      const snapshot = await get(userRef);
+      return snapshot.val() || '#4CAF50'; // Default color
+    } catch {
+      return '#4CAF50'; // Default color
+    }
+  };
+
+  const addComment = async () => {
+    if (comment.trim()) {
+      const newComment = {
+        userId: currentUserId,
+        content: comment,
+        timestamp: Date.now(),
+      };
+
+      setLoading(true); // Set loading to true before starting the upload
+
+      try {
+        const commentsRef = ref(db, `reviews/${rating.id}/comments`);
+        const newCommentRef = push(commentsRef);
+        await set(newCommentRef, newComment);
+        setComment('');
+        setComments((prevComments) => [...prevComments, newComment]);
+      } catch (error) {
+        Alert.alert('Error', 'Kan het commentaar niet toevoegen.');
+      } finally {
+        setLoading(false); // Set loading to false after the upload is complete
+      }
+    } else {
+      Alert.alert('Leeg commentaar', 'Je kunt geen leeg commentaar toevoegen.');
+    }
+  };
+
   return (
-    <View style={styles.container}>
-      {/* Reviewer Info */}
+    <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.reviewerContainer}>
         <View style={[styles.avatar, { backgroundColor: avatarColor || '#4CAF50' }]}>
           <Text style={styles.avatarText}>
@@ -54,7 +123,6 @@ const ReviewDetailScreen: FunctionComponent<ReviewDetailScreenProps> = ({ route 
         </Text>
       </View>
 
-      {/* Beer Info */}
       <Text style={styles.title}>{rating.beerName.toUpperCase()}</Text>
       <Text style={styles.date}>{formatDate(rating.timestamp)}</Text>
       <Text style={styles.subtitle}>Bar</Text>
@@ -64,7 +132,6 @@ const ReviewDetailScreen: FunctionComponent<ReviewDetailScreenProps> = ({ route 
       <Text style={styles.subtitle}>Beoordeling</Text>
       <Text style={styles.text}>{renderStars(rating.rating)}</Text>
 
-      {/* Review Section */}
       <Text style={styles.subtitle}>Omschrijving</Text>
       <Text style={styles.text}>
         {rating.review || 'Geen recensie beschikbaar.'}
@@ -90,19 +157,61 @@ const ReviewDetailScreen: FunctionComponent<ReviewDetailScreenProps> = ({ route 
           description={renderStars(rating.rating)}
         />
       </MapView>
-    </View>
+
+      <FlatList
+        data={comments}
+        keyExtractor={(item, index) => index.toString()}
+        renderItem={({ item }) => (
+          <View style={styles.commentItem}>
+            <View
+              style={[
+                styles.avatar,
+                { backgroundColor: userAvatars[item.userId] || '#4CAF50' },
+              ]}
+            >
+              <Text style={styles.avatarText}>
+
+                {fetchUsername(item.userId).then(value => value.substring(0,2))}
+              </Text>
+            </View>
+            <View style={styles.commentDetails}>
+              <Text style={styles.commentUsername}>
+                {fetchUsername(item.userId)}
+              </Text>
+              <Text style={styles.commentContent}>
+                {item.content}
+              </Text>
+            </View>
+
+          </View>
+
+        )}
+      />
+
+      <View style={styles.commentSection}>
+        <TextInput
+          style={styles.commentInput}
+          placeholder="Voeg een commentaar toe"
+          value={comment}
+          onChangeText={setComment}
+        />
+        <Button title="Plaats commentaar" onPress={addComment} />
+        {loading && (
+          <ActivityIndicator style={styles.loadingIndicator} size="small" color="#0000ff" />
+        )}
+      </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-  },
-  reviewerContainer: {
+  commentItem: {
+    backgroundColor: '#f9f9f9',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
+    alignItems: 'flex-start', // Ensure avatar and text are aligned vertically
   },
   avatar: {
     width: 50,
@@ -117,6 +226,35 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
+  commentDetails: {
+    flexDirection: 'column', // Align text vertically
+  },
+  commentUsername: {
+    fontWeight: 'bold',
+    marginBottom: 4, // Space between username and content
+  },
+  commentContent: {
+    fontSize: 16,
+    color: '#333',
+  },
+  container: {
+    padding: 16,
+    flexGrow: 1,
+  },
+  reviewerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  avatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+
   reviewerName: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -147,6 +285,31 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 8,
     marginTop: 16,
+    marginBottom: 10
+  },
+  commentSection: {
+    marginTop: 16,
+  },
+  commentInput: {
+    height: 40,
+    borderColor: '#ddd',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    marginBottom: 8,
+  },
+  commentItem: {
+    backgroundColor: '#f9f9f9',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  loadingIndicator: {
+    marginTop: 10,
+    alignSelf: 'center',
   },
 });
 
