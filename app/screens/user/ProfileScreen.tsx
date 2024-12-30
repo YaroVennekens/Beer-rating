@@ -104,7 +104,7 @@ const ProfileScreen: FunctionComponent<ProfileScreenProps> = ({ navigation }) =>
                 placeholder="Vertel iets over jezelf"
                 multiline
               />
-              <Text style={styles.label}>Kies een avatar kleur</Text>
+              <Text style={styles.label}>Personalizatie</Text>
 
               {/* Show loading animation while color is being fetched */}
               {loadingColor ? (

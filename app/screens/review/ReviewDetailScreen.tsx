@@ -19,14 +19,22 @@ type ReviewDetailScreenProps = {
 const ReviewDetailScreen: FunctionComponent<ReviewDetailScreenProps> = ({ route }) => {
   const { rating, friendId, avatarColor } = route.params;
 
+  if (!rating.key) {
+    console.error('Rating key is missing');
+  }
+
   const [username, setUsername] = useState<string>('Laden...');
   const [comment, setComment] = useState<string>('');
   const [comments, setComments] = useState<any[]>([]);
-  const [loading, setLoading] = useState<boolean>(false); // Loading state
-  const [userAvatars, setUserAvatars] = useState<{ [key: string]: string }>({}); // Store user avatars by ID
+  const [loading, setLoading] = useState<boolean>(false);
+  const [userAvatars, setUserAvatars] = useState<{ [key: string]: string }>({});
   const currentUserId = getAuth().currentUser?.uid;
 
-  // Fetch the username asynchronously
+
+  useEffect(() => {
+    console.log('Rating ID:', rating.key);
+  }, [rating]);
+
   useEffect(() => {
     const loadUsername = async () => {
       try {
@@ -45,7 +53,7 @@ const ReviewDetailScreen: FunctionComponent<ReviewDetailScreenProps> = ({ route 
   useEffect(() => {
     const fetchComments = async () => {
       try {
-        const commentsRef = ref(db, `reviews/${rating.id}/comments`);
+        const commentsRef = ref(db, `users/${friendId}/reviews/${rating.key}/comments`);
         const snapshot = await get(commentsRef);
         const commentsData = snapshot.val() || {};
 
@@ -63,7 +71,6 @@ const ReviewDetailScreen: FunctionComponent<ReviewDetailScreenProps> = ({ route 
         }, {});
 
         setUserAvatars(userAvatarMap);
-
         setComments(Object.values(commentsData));
       } catch (error) {
         console.error('Error fetching comments:', error);
@@ -71,7 +78,7 @@ const ReviewDetailScreen: FunctionComponent<ReviewDetailScreenProps> = ({ route 
     };
 
     fetchComments();
-  }, [rating.id]);
+  }, [friendId, rating.key]);
 
   // Fetch the avatar color for the user
   const fetchAvatarColor = async (userId: string): Promise<string> => {
@@ -85,6 +92,11 @@ const ReviewDetailScreen: FunctionComponent<ReviewDetailScreenProps> = ({ route 
   };
 
   const addComment = async () => {
+    if (!rating.key) {
+      Alert.alert('Error', 'Review ID is missing');
+      return;
+    }
+
     if (comment.trim()) {
       const newComment = {
         userId: currentUserId,
@@ -92,18 +104,20 @@ const ReviewDetailScreen: FunctionComponent<ReviewDetailScreenProps> = ({ route 
         timestamp: Date.now(),
       };
 
-      setLoading(true); // Set loading to true before starting the upload
+      setLoading(true);
 
       try {
-        const commentsRef = ref(db, `reviews/${rating.id}/comments`);
+        // Ensure we're using the correct path with rating.id
+        const commentsRef = ref(db, `users/${friendId}/reviews/${rating.key}/comments`);
         const newCommentRef = push(commentsRef);
         await set(newCommentRef, newComment);
         setComment('');
         setComments((prevComments) => [...prevComments, newComment]);
       } catch (error) {
+        console.error('Error adding comment:', error);
         Alert.alert('Error', 'Kan het commentaar niet toevoegen.');
       } finally {
-        setLoading(false); // Set loading to false after the upload is complete
+        setLoading(false);
       }
     } else {
       Alert.alert('Leeg commentaar', 'Je kunt geen leeg commentaar toevoegen.');
@@ -170,8 +184,7 @@ const ReviewDetailScreen: FunctionComponent<ReviewDetailScreenProps> = ({ route 
               ]}
             >
               <Text style={styles.avatarText}>
-
-                {fetchUsername(item.userId).then(value => value.substring(0,2))}
+                {fetchUsername(item.userId).then(value => value.substring(0, 2))}
               </Text>
             </View>
             <View style={styles.commentDetails}>
@@ -182,9 +195,7 @@ const ReviewDetailScreen: FunctionComponent<ReviewDetailScreenProps> = ({ route 
                 {item.content}
               </Text>
             </View>
-
           </View>
-
         )}
       />
 
@@ -246,15 +257,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-
   reviewerName: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -285,7 +287,7 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 8,
     marginTop: 16,
-    marginBottom: 10
+    marginBottom: 10,
   },
   commentSection: {
     marginTop: 16,
@@ -298,15 +300,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     marginBottom: 8,
   },
-  commentItem: {
-    backgroundColor: '#f9f9f9',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-
   loadingIndicator: {
     marginTop: 10,
     alignSelf: 'center',
@@ -314,3 +307,4 @@ const styles = StyleSheet.create({
 });
 
 export default ReviewDetailScreen;
+
