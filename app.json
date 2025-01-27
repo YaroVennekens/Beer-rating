@@ -3,7 +3,7 @@
     "name": "BeerRating",
     "slug": "BeerRating",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orienta=tion": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
@@ -14,7 +14,8 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "be.yennekens.beerrating"
     },
     "android": {
       "adaptiveIcon": {

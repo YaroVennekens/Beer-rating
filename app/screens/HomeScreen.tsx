@@ -135,6 +135,12 @@ const HomeScreen: FunctionComponent<HomeScreenProps> = ({ navigation }) => {
           >
             <Text style={styles.overviewButtonText}>Map</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.overviewButton}
+            onPress={() => navigation.navigate('GameSetup')}
+          >
+            <Text style={styles.overviewButtonText}>Minigames</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </View>

@@ -1,5 +1,13 @@
 import React, { FunctionComponent, useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
+import {
+    View,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    StyleSheet,
+    ActivityIndicator,
+    ScrollView,
+} from 'react-native';
 import { getAuth, updateProfile } from 'firebase/auth';
 import { ref, get, update } from 'firebase/database';
 import { db } from '@/app/firebase/firebaseConfig';
@@ -24,8 +32,6 @@ const ProfileScreen: FunctionComponent<ProfileScreenProps> = ({ navigation }) =>
         }
 
         const userId = user.uid;
-
-
         const userRef = ref(db, `users/${userId}`);
         get(userRef)
           .then((snapshot) => {
@@ -33,16 +39,11 @@ const ProfileScreen: FunctionComponent<ProfileScreenProps> = ({ navigation }) =>
               if (userData) {
                   setUsername(userData.username);
                   setBio(userData.bio || '');
-                  const fetchedAvatarColor = userData.avatarColor || '#4CAF50';
-                  setAvatarColor(fetchedAvatarColor);
+                  setAvatarColor(userData.avatarColor || '#4CAF50');
               }
           })
-          .catch((error) => {
-              console.error('Error fetching user data:', error);
-          })
-          .finally(() => {
-              setLoadingColor(false);
-          });
+          .catch((error) => console.error('Error fetching user data:', error))
+          .finally(() => setLoadingColor(false));
     }, [navigation, user]);
 
     const handleProfileUpdate = async () => {
@@ -53,13 +54,11 @@ const ProfileScreen: FunctionComponent<ProfileScreenProps> = ({ navigation }) =>
         try {
             const userId = user.uid;
 
-
             await update(ref(db, `users/${userId}`), {
                 username,
                 bio,
                 avatarColor,
             });
-
 
             await updateProfile(user, { displayName: username });
 
@@ -88,60 +87,86 @@ const ProfileScreen: FunctionComponent<ProfileScreenProps> = ({ navigation }) =>
           <Text style={styles.title}>@{username.replaceAll(' ', '')}</Text>
 
           <View style={styles.form}>
+              {/* Username Input */}
               <Text style={styles.label}>Gebruikersnaam</Text>
               <TextInput
                 style={styles.input}
                 value={username}
                 onChangeText={setUsername}
                 placeholder="Vul je gebruikersnaam in"
+                placeholderTextColor="#999"
               />
 
+              {/* Bio Input */}
               <Text style={styles.label}>Bio</Text>
               <TextInput
                 style={[styles.input, styles.bioInput]}
                 value={bio}
                 onChangeText={setBio}
                 placeholder="Vertel iets over jezelf"
+                placeholderTextColor="#999"
                 multiline
               />
-              <Text style={styles.label}>Personalizatie</Text>
 
-              {/* Show loading animation while color is being fetched */}
+              {/* Color Picker */}
+              <Text style={styles.label}>Personalizatie</Text>
               {loadingColor ? (
                 <ActivityIndicator size="large" color="#4CAF50" />
               ) : (
-                <View style={styles.colorPickerContainer}>
-                    <ColorPicker
-                      color={avatarColor}
-                      onColorChange={handleColorSelect}
-                      style={{ width: 300, height: 300 }}
-                    />
+                <View style={styles.colorPickerSection}>
+                    {/* Small Avatar Preview - Links Boven */}
+                    <View style={styles.smallAvatarContainer}>
+                        <View
+                          style={[
+                              styles.smallAvatar,
+                              { backgroundColor: avatarColor },
+                          ]}
+                        >
+                            <Text style={styles.smallAvatarText}>
+                                {username.slice(0, 2).toUpperCase()}
+                            </Text>
+                        </View>
+                    </View>
+
+                    {/* ColorPicker - Gecentreerd */}
+                    <View style={styles.colorPickerContainer}>
+                        <ColorPicker
+                          color={avatarColor}
+                          onColorChange={handleColorSelect}
+                          thumbSize={30}
+                          sliderSize={30}
+                          noSnap
+                          row={false}
+                          style={styles.colorPicker}
+                        />
+                    </View>
                 </View>
               )}
 
+              {/* Navigation Buttons */}
               <TouchableOpacity
-                style={styles.button}
+                style={styles.navigationButton}
                 onPress={() => navigation.navigate('FriendsList')}
               >
-                  <Text style={styles.buttonText}>Vrienden</Text>
+                  <Text style={styles.navigationButtonText}>Vrienden</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.button}
+                style={styles.navigationButton}
                 onPress={() => navigation.navigate('Overview')}
               >
-                  <Text style={styles.buttonText}>Reviews</Text>
+                  <Text style={styles.navigationButtonText}>Reviews</Text>
               </TouchableOpacity>
 
               {/* Save Profile Button */}
               <TouchableOpacity
-                style={styles.button}
+                style={[styles.saveButton, { opacity: loading ? 0.7 : 1 }]}
                 onPress={handleProfileUpdate}
                 disabled={loading}
               >
                   {loading ? (
                     <ActivityIndicator size="small" color="#fff" />
                   ) : (
-                    <Text style={styles.buttonText}>Opslaan</Text>
+                    <Text style={styles.saveButtonText}>Opslaan</Text>
                   )}
               </TouchableOpacity>
           </View>
@@ -160,78 +185,128 @@ const ProfileScreen: FunctionComponent<ProfileScreenProps> = ({ navigation }) =>
     );
 };
 
+// ------ Styles ------
 const styles = StyleSheet.create({
     screen: {
         flexGrow: 1,
         padding: 16,
-        justifyContent: 'flex-start',
+        backgroundColor: '#f9f9f9',
+        alignItems: 'center',
     },
     avatarContainer: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
+        width: 120,
+        height: 120,
+        borderRadius: 60,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 20,
+        backgroundColor: '#ccc',
+        marginBottom: 10,
+        elevation: 3,
     },
     avatarText: {
         color: 'white',
-        fontSize: 32,
+        fontSize: 36,
         fontWeight: 'bold',
     },
     title: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginBottom: 16,
+        fontSize: 28,
+        fontWeight: '600',
+        marginBottom: 20,
+        color: '#333',
     },
     form: {
-        width: '100%',
-        marginBottom: 20,
+        width: '90%',
     },
     label: {
-        fontSize: 18,
-        marginBottom: 8,
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#555',
+        marginBottom: 5,
     },
     input: {
-        borderWidth: 1,
-        borderColor: '#ccc',
-        padding: 12,
-        borderRadius: 8,
-        marginBottom: 16,
         width: '100%',
+        borderWidth: 1,
+        borderColor: '#ddd',
+        padding: 12,
+        borderRadius: 10,
+        marginBottom: 15,
+        backgroundColor: '#fff',
         fontSize: 16,
     },
     bioInput: {
         height: 100,
         textAlignVertical: 'top',
     },
-    button: {
-        backgroundColor: '#4CAF50',
-        padding: 16,
-        borderRadius: 8,
-        alignItems: 'center',
-        width: '100%',
-        marginBottom: 10,
+    colorPickerSection: {
+        alignItems: 'flex-start', // Avatar links plaatsen
+        justifyContent: 'center',
+        marginBottom: 20,
     },
-    buttonText: {
+    smallAvatarContainer: {
+        marginTop: 10,
+        marginBottom: 10,
+        alignItems: 'center',
+    },
+    smallAvatar: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#ccc',
+    },
+    smallAvatarText: {
+        color: 'white',
+        fontSize: 20,
+        fontWeight: 'bold',
+    },
+    colorPickerContainer: {
+        width: '100%',
+        alignItems: 'center',
+        marginBottom: 50
+    },
+    colorPicker: {
+        width: 250,
+        height: 250,
+    },
+    navigationButton: {
+        width: '100%',
+        backgroundColor: '#4CAF50',
+        padding: 15,
+        borderRadius: 10,
+        marginBottom: 10,
+        alignItems: 'center',
+    },
+    navigationButtonText: {
         color: 'white',
         fontSize: 18,
+        fontWeight: '600',
+    },
+    saveButton: {
+        width: '100%',
+        backgroundColor: '#2196F3',
+        padding: 15,
+        borderRadius: 10,
+        marginBottom: 10,
+        alignItems: 'center',
+    },
+    saveButtonText: {
+        color: 'white',
+        fontSize: 18,
+        fontWeight: '600',
     },
     logoutButton: {
+        width: '90%',
         backgroundColor: '#f44336',
-        padding: 16,
-        borderRadius: 8,
+        padding: 15,
+        borderRadius: 10,
+        marginTop: 30,
         alignItems: 'center',
-        width: '100%',
-        marginTop: 20,
     },
     logoutButtonText: {
         color: 'white',
         fontSize: 16,
-    },
-    colorPickerContainer: {
-        alignItems: 'center',
-        marginBottom: 20,
+        fontWeight: '600',
     },
 });
 

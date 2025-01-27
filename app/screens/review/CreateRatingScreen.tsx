@@ -16,7 +16,7 @@ import { Picker } from '@react-native-picker/picker';
 import { db } from '@/app/firebase/firebaseConfig';
 import GetLocation from 'react-native-get-location';
 import { request, PERMISSIONS, RESULTS } from 'react-native-permissions';
-import {RootStackParamList} from '@/app'
+
 
 interface Place {
   geometry: {

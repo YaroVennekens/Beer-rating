@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Slider from '@react-native-community/slider';
-import { Share, X } from 'lucide-react-native';
+import {  X } from 'lucide-react-native';
 
 interface ColorPickerProps {
     onColorSelect: (color: string) => void;

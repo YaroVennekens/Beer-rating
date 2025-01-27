@@ -91,7 +91,7 @@ const AcceptFriendRequest: FunctionComponent = () => {
             }
         };
 
-        fetchFriendRequests();
+        void fetchFriendRequests();
     }, [currentUserId]);
 
     const navigateToProfile = (senderId: string) => {
